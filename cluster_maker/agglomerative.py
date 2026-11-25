@@ -40,6 +40,7 @@ def agglomerative_clustering(
     ValueError
         If the input shape, cluster count, linkage, or metric is invalid.
     """
+    # Error handling
     if not isinstance(X, np.ndarray):
         raise TypeError("X must be a NumPy array.")
     if X.ndim != 2 or X.shape[0] == 0 or X.shape[1] == 0:
@@ -79,7 +80,7 @@ def agglomerative_clustering(
             affinity=metric,
         )
 
-    labels = model.fit_predict(X)
+    labels = model.fit_predict(X) # get the cluster labels for each sample
     centroids = np.vstack(
         [X[labels == cluster_id].mean(axis=0) for cluster_id in range(k)]
     )

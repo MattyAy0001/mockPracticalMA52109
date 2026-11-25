@@ -1,3 +1,11 @@
+###
+## cluster_maker: agglomerative clustering demo
+##
+## The difficult dataset forms concentric rings. This script clusters points
+## by their distance from the estimated centre, compares k = 2 through 5, and
+## saves the selected labels, metrics, and visualisations.
+###
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -15,10 +23,11 @@ from cluster_maker import (
 ROOT_DIR = Path(__file__).resolve().parents[1]
 DATA_PATH = ROOT_DIR / "data" / "difficult_dataset.csv"
 OUTPUT_DIR = ROOT_DIR / "demo_output"
-K_VALUES = range(2, 7)
+K_VALUES = range(2, 6)  # Compare k = 2 through 5
 
 
 def main() -> None:
+    # Load the two-dimensional dataset used for the cluster plots.
     if not DATA_PATH.is_file():
         raise FileNotFoundError(f"Dataset not found: {DATA_PATH}")
 
@@ -30,13 +39,15 @@ def main() -> None:
     X = data[feature_cols].to_numpy(dtype=float)
     center = X.mean(axis=0)
     centered = X - center
+    # Radial distance separates concentric rings more clearly than x and y.
     radii = np.linalg.norm(centered, axis=1).reshape(-1, 1)
 
     OUTPUT_DIR.mkdir(exist_ok=True)
     metrics_summary = []
     clusterings = {}
+    # Compare cluster counts using silhouette scores.
     for k in K_VALUES:
-        labels, _ = agglomerative_clustering(radii, k=k, linkage="ward")
+        labels, _ = agglomerative_clustering(radii, k=k, linkage="complete")
         score = silhouette_score_sklearn(radii, labels)
         metrics_summary.append({"k": k, "silhouette": score})
         clusterings[k] = labels
@@ -46,12 +57,14 @@ def main() -> None:
     labels = clusterings[selected_k]
     best_score = metrics.loc[metrics["k"] == selected_k, "silhouette"].iloc[0]
 
+    # Save the selected labels with the original coordinates and radii.
     output_data = data.copy()
     output_data["radius"] = radii[:, 0]
     output_data["cluster"] = labels
     output_data.to_csv(OUTPUT_DIR / "difficult_dataset_clustered.csv", index=False)
     metrics.to_csv(OUTPUT_DIR / "difficult_dataset_metrics.csv", index=False)
 
+    # Show the selected assignments in the original x/y coordinate space.
     fig, _ = plot_clusters_2d(
         X,
         labels,
@@ -60,6 +73,7 @@ def main() -> None:
     fig.savefig(OUTPUT_DIR / "difficult_dataset_clusters.png", dpi=150)
     plt.close(fig)
 
+    # Plot radius against angle to make the ring-shaped groups visible.
     angles = np.arctan2(centered[:, 1], centered[:, 0])
     fig, ax = plt.subplots()
     scatter = ax.scatter(
@@ -78,6 +92,7 @@ def main() -> None:
     fig.savefig(OUTPUT_DIR / "difficult_dataset_radial_structure.png", dpi=150)
     plt.close(fig)
 
+    # Compare silhouette scores to explain the selected number of clusters.
     fig, ax = plt.subplots()
     ax.plot(metrics["k"], metrics["silhouette"], marker="o")
     ax.axvline(
